@@ -15,7 +15,7 @@ export async function createDemo(){
     else{g.fillStyle='#fff';g.fillRect(335,270,1220,700);['Empresa','Nome do contato','E-mail profissional','Canal de entrada','Próxima atividade'].forEach((t,j)=>{const y=325+j*115;g.fillStyle='#5b6f86';g.font='20px system-ui';g.fillText(t,375,y);g.strokeStyle='#dce4ef';g.strokeRect(375,y+15,1130,58);g.fillStyle='#233d59';g.font='22px system-ui';g.fillText(['Empresa Horizonte','Contato de exemplo','contato@example.com','Indicação','Agendar conversa de descoberta'][j],395,y+53);});g.fillStyle='#2276e5';g.fillRect(1295,980,260,60);g.fillStyle='white';g.fillText('Salvar oportunidade',1310,1019);}
     g.fillStyle='#647c98';g.font='18px system-ui';g.fillText('DEMONSTRAÇÃO · Nenhum dado real',1450,65);
     const blob=await new Promise<Blob>(r=>c.toBlob(b=>r(b!),'image/png'));const imageId=id();await saveAsset({id:imageId,bookId:book.id,blob,kind:'image',createdAt:Date.now()});
-    steps.push({id:id(),title:titles[i],instruction:transcripts[i],transcript:transcripts[i],time:i*31,endTime:(i+1)*31,imageId,annotations:[{id:id(),type:i===0?'box':'circle',x:i===0?.01:.19,y:i===0?.25:i===1?.31:.77,x2:i===0?.14:.79,y2:i===0?.3:i===1?.37:.84,text:i===0?'Comece aqui':''}],source:'demo'});
+    steps.push({id:id(),title:titles[i],instruction:transcripts[i],transcript:transcripts[i],time:i*31,endTime:(i+1)*31,imageId,annotations:[{id:id(),type:'highlight',x:i===0?.025:.205,y:i===0?.282:i===1?.348:.773,x2:i===0?.13:i===1?.36:.395,y2:i===0?.29:i===1?.357:.782,text:''}],source:'demo'});
   }
   book.steps=steps;await saveBook(book);return book;
 }

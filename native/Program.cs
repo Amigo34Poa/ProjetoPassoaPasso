@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Speech.Recognition;
 using System.Text;
@@ -19,8 +20,8 @@ internal static class Program
     static ClickOverlay? overlay;
     static IntPtr controlHandle;
     static readonly System.Threading.Timer Timer = new(_ => Frame(), null, Timeout.Infinite, Timeout.Infinite);
-    static Point lastClick;
-    static long lastClickTicks;
+    sealed record FrameSnapshot(string Image, long Ticks);
+    static FrameSnapshot? latestFrame;
 
     [STAThread]
     static void Main(string[] args)
@@ -30,6 +31,7 @@ internal static class Program
         window = new CaptureWindow();
         controlHandle = window.Handle;
         overlay = new ClickOverlay();
+        TargetProbe.Start(() => active && !paused);
         var hotkeys = new Dictionary<string, bool> {
             ["toggle"] = RegisterHotKey(window.Handle, 1, 0x4000 | 0x0002 | 0x0001, (uint)Keys.R),
             ["mark"] = RegisterHotKey(window.Handle, 2, 0x4000 | 0x0002 | 0x0001, (uint)Keys.M),
@@ -57,6 +59,7 @@ internal static class Program
                 var type = root.GetProperty("type").GetString();
                 if (type == "start") {
                     displayIndex = Math.Clamp(root.GetProperty("display").GetInt32(), 0, Screen.AllScreens.Length - 1);
+                    Volatile.Write(ref latestFrame, null);
                     pausedMs = 0; paused = false; Clock.Restart(); active = true;
                     Timer.Change(0, 250);
                     if (root.TryGetProperty("speech", out var useSpeech) && useSpeech.GetBoolean()) window?.BeginInvoke(() => StartSpeech());
@@ -100,14 +103,12 @@ internal static class Program
                     DrawIconEx(hdc, ci.ptScreenPos.x - bounds.X - hot.X, ci.ptScreenPos.y - bounds.Y - hot.Y, ci.hCursor, 0, 0, 0, IntPtr.Zero, 3);
                     g.ReleaseHdc(hdc);
                 }
-                if (Stopwatch.GetElapsedTime(Interlocked.Read(ref lastClickTicks)).TotalMilliseconds < 650 && bounds.Contains(lastClick)) {
-                    using var pen = new Pen(Color.FromArgb(220, 58, 145, 255), 5);
-                    g.DrawEllipse(pen, lastClick.X - bounds.X - 22, lastClick.Y - bounds.Y - 22, 44, 44);
-                }
             }
             using var stream = new MemoryStream();
             bitmap.Save(stream, ImageFormat.Png);
-            Emit(new { type = "frame", time = Time(), width = bitmap.Width, height = bitmap.Height, image = "data:image/png;base64," + Convert.ToBase64String(stream.ToArray()) });
+            var image = "data:image/png;base64," + Convert.ToBase64String(stream.ToArray());
+            Volatile.Write(ref latestFrame, new FrameSnapshot(image, Stopwatch.GetTimestamp()));
+            Emit(new { type = "frame", time = Time(), width = bitmap.Width, height = bitmap.Height, image });
         } catch { Emit(new { type = "error", message = "Não foi possível capturar o monitor. Janelas protegidas podem impedir a captura." }); }
         finally { Volatile.Write(ref busy, 0); }
     }
@@ -118,9 +119,15 @@ internal static class Program
             var m = Marshal.PtrToStructure<MouseData>(data);
             var bounds = Screen.AllScreens[displayIndex].Bounds;
             if (bounds.Contains(m.pt.x, m.pt.y)) {
-                lastClick = new Point(m.pt.x, m.pt.y);Interlocked.Exchange(ref lastClickTicks, Stopwatch.GetTimestamp());
-                var clickPoint = lastClick;
-                window?.BeginInvoke(() => { if (active && !paused) overlay?.ShowAt(clickPoint); });
+                var clickPoint = new Point(m.pt.x, m.pt.y);
+                var target = TargetProbe.BoundsAt(clickPoint, bounds);
+                var band = target.IsEmpty
+                    ? new Rectangle(clickPoint.X - 32, clickPoint.Y + 3, 64, 7)
+                    : new Rectangle(target.Left, target.Bottom - Math.Clamp((int)(target.Height * .3), 5, 12), target.Width, Math.Clamp((int)(target.Height * .3), 5, 12));
+                band = Rectangle.Intersect(band, bounds);
+                window?.BeginInvoke(() => { if (active && !paused) overlay?.ShowAt(band); });
+                var frame = Volatile.Read(ref latestFrame);
+                var image = frame != null && Stopwatch.GetElapsedTime(frame.Ticks).TotalMilliseconds < 750 ? frame.Image : null;
                 var x = (double)(m.pt.x - bounds.X) / bounds.Width;
                 var y = (double)(m.pt.y - bounds.Y) / bounds.Height;
                 var time = Time();
@@ -128,7 +135,8 @@ internal static class Program
                 ThreadPool.QueueUserWorkItem(_ => {
                     var title = new StringBuilder(512);
                     GetWindowText(GetForegroundWindow(), title, title.Capacity);
-                    Emit(new { type = "click", time, x, y, button = (int)message == 0x0204 ? "right" : "left", window = title.ToString() });
+                    Emit(new { type = "click", time, x, y, button = (int)message == 0x0204 ? "right" : "left", window = title.ToString(), image,
+                        target = target.IsEmpty ? null : new { x = (double)(target.Left - bounds.X) / bounds.Width, y = (double)(target.Top - bounds.Y) / bounds.Height, x2 = (double)(target.Right - bounds.X) / bounds.Width, y2 = (double)(target.Bottom - bounds.Y) / bounds.Height } });
                 });
             }
         }
@@ -175,18 +183,24 @@ internal static class Program
     sealed class ClickOverlay : Form
     {
         readonly System.Windows.Forms.Timer hideTimer = new() { Interval = 650 };
+        bool captureExcluded;
         public ClickOverlay() {
             FormBorderStyle = FormBorderStyle.None;ShowInTaskbar = false;TopMost = true;
             BackColor = Color.Magenta;TransparencyKey = Color.Magenta;AutoScaleMode = AutoScaleMode.None;
-            Width = 54;Height = 54;DoubleBuffered = true;
+            Width = 64;Height = 7;DoubleBuffered = true;Opacity = .65;
             hideTimer.Tick += (_, _) => { hideTimer.Stop();Hide(); };
         }
         protected override bool ShowWithoutActivation => true;
         protected override CreateParams CreateParams { get { var p = base.CreateParams;p.ExStyle |= 0x08000000 | 0x20 | 0x80;return p; } }
-        public void ShowAt(Point point) { hideTimer.Stop();Location = new Point(point.X - 27, point.Y - 27);Show();Invalidate();hideTimer.Start(); }
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            // Keep the transient click marker out of the original screenshot/video.
+            captureExcluded = SetWindowDisplayAffinity(Handle, 0x00000011);
+        }
+        public void ShowAt(Rectangle band) { if (band.IsEmpty) return;_ = Handle;if (!captureExcluded) return;hideTimer.Stop();Bounds = band;Show();Invalidate();hideTimer.Start(); }
         protected override void OnPaint(PaintEventArgs e) {
             base.OnPaint(e);e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using var pen = new Pen(Color.FromArgb(61, 145, 255), 4);e.Graphics.DrawEllipse(pen, 5, 5, 44, 44);
+            using var brush = new SolidBrush(Color.FromArgb(250, 204, 21));e.Graphics.FillRectangle(brush, ClientRectangle);
         }
         protected override void Dispose(bool disposing) { if (disposing) hideTimer.Dispose();base.Dispose(disposing); }
     }
@@ -207,4 +221,5 @@ internal static class Program
     [DllImport("user32.dll")] static extern bool GetIconInfo(IntPtr icon, out IconInfo info);
     [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr obj);
     [DllImport("user32.dll")] static extern bool DrawIconEx(IntPtr dc, int x, int y, IntPtr icon, int width, int height, uint step, IntPtr brush, uint flags);
+    [DllImport("user32.dll")] static extern bool SetWindowDisplayAffinity(IntPtr window, uint affinity);
 }

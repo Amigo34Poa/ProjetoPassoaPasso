@@ -1,7 +1,7 @@
 export const ROLES = ['SDR', 'Assistente', 'Vendedor Interno', 'Supervisor Interno de Vendas', 'Gerente de Vendas', 'Pós-Vendas'] as const;
 export type Role = typeof ROLES[number];
 export type Provider = 'browser' | 'windows' | 'gemini' | 'openai';
-export type Annotation = { id: string; type: 'circle'|'arrow'|'box'|'blur'|'label'; x: number; y: number; x2: number; y2: number; text: string };
+export type Annotation = { id: string; type: 'highlight'|'circle'|'arrow'|'box'|'blur'|'label'; x: number; y: number; x2: number; y2: number; text: string };
 export type Step = { id: string; title: string; transcript: string; instruction: string; time: number; endTime: number; imageId?: string; annotations: Annotation[]; source: 'manual'|'click'|'automatic'|'demo'; window?: string; clipId?: string; clipFormat?: 'video'|'gif'; clipStart?: number; clipEnd?: number; transcriptIds?: string[]; action?: { button:'left'|'right'; x:number; y:number }; draftOrigin?:'local-rules' };
 export type Transcript = { id: string; text: string; time: number; endTime: number; source: string; stepId?:string|null };
 export type Playbook = {

@@ -30,7 +30,7 @@ export function localSuggestion(step:Step):{title:string;instruction:string;basi
     instruction=instruction[0].toLocaleUpperCase('pt-BR')+instruction.slice(1);
     return {title:titleExcerpt(instruction),instruction,basis:'narration'};
   }
-  if(step.source==='click'&&step.annotations.some(a=>a.type==='circle'||a.type==='box'||a.type==='arrow')){
+  if(step.source==='click'&&step.annotations.some(a=>['highlight','circle','box','arrow'].includes(a.type))){
     const right=step.action?.button==='right';
     return {title:right?'Clique com o botão direito':'Clique no ponto destacado',instruction:right?'Clique com o botão direito no ponto destacado.':'Clique no ponto destacado.',basis:'click'};
   }

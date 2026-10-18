@@ -4,9 +4,9 @@ Aplicativo próprio para documentar processos comerciais com tela, narração, c
 
 ## Entrega Windows sem instalador
 
-O arquivo `release/Playbook-Studio-0.2.0-Windows-x64.zip` contém o aplicativo portátil, o runtime Node.js e a interface compilada. Extraia tudo e execute `Playbook Studio.exe`. Não é necessário instalar Node.js ou .NET. Consulte [o guia completo](docs/GUIA-WINDOWS.md).
+O arquivo `release/Playbook-Studio-0.2.1-Windows-x64.zip` contém o aplicativo portátil, o runtime Node.js e a interface compilada. Extraia tudo e execute `Playbook Studio.exe`. Não é necessário instalar Node.js ou .NET. Consulte [o guia completo](docs/GUIA-WINDOWS.md).
 
-O executável é para Windows 11 x64 e não foi assinado digitalmente. A execução está sujeita às políticas corporativas. O capturador Windows foi compilado nesta entrega, mas precisa de validação em Windows real; o ambiente de desenvolvimento atual é Linux.
+O executável é para Windows 11 x64, solicita somente `asInvoker` (sem elevação de administrador) e não foi assinado digitalmente. A execução está sujeita às políticas corporativas. O capturador Windows foi compilado nesta entrega, mas precisa de validação em Windows real; o ambiente de desenvolvimento atual é Linux.
 
 ## O que está implementado
 
@@ -15,8 +15,9 @@ O executável é para Windows 11 x64 e não foi assinado digitalmente. A execuç
 - Companheiro Windows com captura do monitor, ponteiro, realces de cliques e atalhos globais. Não grava todas as teclas digitadas.
 - Reconhecimento Web Speech quando oferecido pelo navegador; reconhecimento Windows pt-BR quando instalado.
 - Integrações oficiais: Gemini Live para voz, Gemini para sugestões visuais e texto; OpenAI para transcrição em blocos e sugestões visuais.
-- Editor de narração e instrução separadas, ordem das etapas, intervalos de áudio, setas, caixas, círculos, rótulos e ocultação opaca.
-- Clipes WebM/MP4 e GIFs com até 1080p quando a fonte permitir.
+- Editor de narração e instrução separadas, ordem das etapas, intervalos de áudio, marca-texto translúcido, setas, caixas, rótulos e ocultação opaca.
+- Vídeo integral preservado, disponível abaixo do editor; sem botões para gerar GIF ou clipe. Mídias de etapas criadas em versões anteriores continuam acessíveis.
+- Destaque automático na base do elemento exposto pelo Windows UI Automation; marcador curto no clique quando não há elemento confiável. O reconhecimento é local e não requer API.
 - Exportação Word, PDF pela impressão do navegador, tutorial HTML multimídia e backup ZIP importável com verificação SHA-256.
 - Login Google OAuth/Drive com `drive.file`, upload manual de backups e importação de arquivos acessíveis ao aplicativo.
 - Persistência de trechos durante gravação e recuperação de sessões interrompidas.
@@ -27,6 +28,7 @@ O executável é para Windows 11 x64 e não foi assinado digitalmente. A execuç
 - Gemini Pro/ChatGPT Pro não substituem credenciais de API. A interface não simula login nessas assinaturas. Sem reconhecedor funcional/API configurada, há gravação de áudio, mas não há transcrição garantida.
 - Gemini/OpenAI e Drive precisam de projetos/credenciais próprios; chamadas reais e consentimento OAuth não foram validados sem essas credenciais. Os modelos Gemini são configuráveis e podem depender da disponibilidade do projeto.
 - Um navegador comum não identifica cliques em outras janelas. O modo Windows usa o companheiro nativo para isso.
+- A detecção de elementos depende das informações de acessibilidade do programa gravado. Alvos indisponíveis, protegidos ou grandes demais usam um marcador curto; nenhum texto de senha é lido pelo detector.
 - A captura Windows em PNG é limitada a até 4 fps. Não é um gravador de vídeo de alta taxa de quadros. Outras telas e janelas protegidas não estão implicitamente incluídas no monitor selecionado.
 - Os tempos da transcrição são aproximações por segmento. A associação fala/imagem é sugerida por limites de etapa e exige revisão; não há alinhamento certificado palavra a palavra.
 - Publicar significa marcar como publicado na biblioteca local. Não cria um site público, não distribui permissões ao time e não estabelece um backend multiusuário.
@@ -85,8 +87,7 @@ src/                  Interface React/TypeScript, editor e biblioteca
   db.ts               IndexedDB e consolidação atômica de gravações
   exports.ts          Word, PDF, HTML e backups verificáveis
   images.ts           Anotações e rasterização das ocultações
-  clips.ts            Clipes de vídeo e geração de GIF
-  gif.worker.ts       Codificação de GIF fora da thread da interface
+  highlights.ts       Faixas de marca-texto e compatibilidade com cliques antigos
   drive.ts            OAuth e operações de Drive
 server/               Serviço local, proteção de origem e integrações de IA
 native/               Capturador/launcher Windows C#/.NET

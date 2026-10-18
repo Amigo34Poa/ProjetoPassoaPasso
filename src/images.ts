@@ -1,9 +1,16 @@
 import type { Annotation } from './types';
 import { getAsset } from './db';
+import { HIGHLIGHT_COLOR, HIGHLIGHT_OPACITY } from './highlights';
 export function loadImage(src:string):Promise<HTMLImageElement>{return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Não foi possível abrir a imagem.'));image.src=src;});}
 export function paintAnnotation(ctx:CanvasRenderingContext2D,a:Annotation,width:number,height:number,original?:CanvasImageSource){
   const x=a.x*width,y=a.y*height,x2=a.x2*width,y2=a.y2*height;
   ctx.save();ctx.strokeStyle='#2d8cff';ctx.fillStyle='#2d8cff';ctx.lineWidth=Math.max(3,width/380);ctx.lineJoin='round';
+  if(a.type==='highlight'){
+    ctx.fillStyle=HIGHLIGHT_COLOR;ctx.globalAlpha=HIGHLIGHT_OPACITY;
+    ctx.fillRect(Math.min(x,x2),Math.min(y,y2),Math.abs(x2-x),Math.abs(y2-y));
+    ctx.strokeStyle=HIGHLIGHT_COLOR;ctx.globalAlpha=.8;ctx.lineWidth=Math.max(1,width/960);
+    ctx.beginPath();ctx.moveTo(Math.min(x,x2),Math.max(y,y2));ctx.lineTo(Math.max(x,x2),Math.max(y,y2));ctx.stroke();ctx.globalAlpha=1;
+  }
   if(a.type==='circle'){ctx.beginPath();ctx.ellipse((x+x2)/2,(y+y2)/2,Math.max(4,Math.abs(x2-x)/2),Math.max(4,Math.abs(y2-y)/2),0,0,Math.PI*2);ctx.stroke();}
   if(a.type==='box')ctx.strokeRect(Math.min(x,x2),Math.min(y,y2),Math.abs(x2-x),Math.abs(y2-y));
   if(a.type==='arrow'){

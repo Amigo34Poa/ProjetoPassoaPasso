@@ -9,11 +9,24 @@ O executável precisa permanecer junto das pastas `runtime` e `dist` e do arquiv
 
 Para atualizar uma versão anterior, finalize qualquer gravação, exporte um backup e use Encerrar aplicativo nas configurações. Depois extraia a nova versão em outra pasta e abra seu executável. O iniciador reutiliza um serviço já aberto na porta 4317; por isso é importante encerrar a versão anterior. A biblioteca permanece no mesmo perfil do navegador quando endereço e porta são mantidos.
 
+
+## Avisos do Windows e computadores da empresa
+
+O ZIP não é um instalador, mas contém executáveis. O manifesto solicita `asInvoker`, sem administrador. Não são criados serviço do Windows, tarefa de inicialização, regra de firewall ou instalação global; o runtime pode extrair arquivos temporários no perfil do usuário.
+
+- **“O Windows protegeu o computador” / SmartScreen:** aviso de reputação de um executável não assinado; não é confirmação de instalação.
+- **Controle de Conta de Usuário / “Deseja permitir que este aplicativo faça alterações…”:** é um pedido de elevação. O Playbook Studio não o solicita no manifesto. Registre qual arquivo e editor aparecem; a origem pode ser o modo de execução ou outra configuração. Não é preciso usar Executar como administrador para este aplicativo.
+- **Windows Defender Firewall:** pode ser um aviso sobre o runtime Node.js. O aplicativo escuta apenas em `127.0.0.1:4317`; não precisa receber conexões da rede da empresa. Não inclui abertura automática de portas.
+- **Microfone/compartilhamento de tela no navegador:** são permissões de captura, independentes de instalação.
+- **AppLocker, WDAC, antivírus ou política corporativa:** podem bloquear executáveis portáteis, runtimes e captura, mesmo que outro aplicativo portátil já tenha funcionado.
+
+Não há garantia de liberação no computador de trabalho. Encaminhe o pacote, a soma SHA-256 e o aviso exato para a TI avaliar. Uma assinatura digital pode ajudar com identidade e reputação, mas não substitui autorização corporativa.
+
 ## Gravar
 
 Clique em Nova gravação, informe título e cargo e escolha a captura. Autorize o microfone. O microfone padrão do Windows é usado.
 
-- Windows completo: captura o monitor selecionado, identifica cliques e adiciona realces na gravação. Até 4 quadros por segundo; indicado para processos e telas de sistemas.
+- Windows completo: captura o monitor selecionado, identifica cliques e adiciona marca-texto editável nas etapas. O realce transitório na tela é excluído das capturas quando o Windows oferece esse recurso. Até 4 quadros por segundo; indicado para processos e telas de sistemas.
 - Compartilhar tela: captura uma tela, janela ou aba escolhida no navegador. Este modo não detecta cliques fora da página do aplicativo. Capturas automáticas se baseiam em mudanças visuais; marque etapas manualmente quando necessário.
 - Marcar etapa: Ctrl + Alt + M.
 - Pausar ou continuar: Ctrl + Alt + P.
@@ -42,9 +55,13 @@ Ao finalizar uma gravação, o aplicativo também prepara rascunhos locais nos c
 
 Revise a associação entre fala e imagens. Os tempos da fala do navegador, Gemini Live e Windows são estimados por segmento, não alinhamento garantido palavra a palavra. A transcrição pode conter erros. A narração literal e a instrução organizada são campos separados.
 
-Adicione setas, círculos, caixas e textos arrastando sobre a imagem. Ocultar dados aplica uma tarja opaca nas imagens exportadas; o original é preservado no backup completo. Sugestões por IA usam a imagem já coberta pelas tarjas existentes, mas a narração enviada também precisa de revisão.
+Adicione marca-texto, setas, caixas e textos arrastando sobre a imagem. Ocultar dados aplica uma tarja opaca nas imagens exportadas; o original é preservado no backup completo. Sugestões por IA usam a imagem já coberta pelas tarjas existentes, mas a narração enviada também precisa de revisão.
 
-Clipes: até 8 segundos por ação no editor, na resolução do vídeo. GIFs: até 4 segundos, 4 fps e resolução disponível até 1920 × 1080; telas menores não são artificialmente promovidas a 1080p. Os clipes e GIFs usam o vídeo ORIGINAL e não recebem automaticamente as tarjas das imagens.
+Na versão 0.2.1, os botões de gerar GIF e clipe foram removidos. Expanda **Gravação original da tela**, abaixo do editor, para assistir ao vídeo integral. A opção de preservá-lo continua ativada por padrão na preparação. Clipes de versões anteriores continuam reproduzíveis e exportáveis.
+
+Os novos cliques recebem uma faixa amarela translúcida na base do link, texto ou botão, usando os limites de acessibilidade fornecidos pelo Windows UI Automation. Esse detector funciona localmente e não depende de IA externa. Se o programa não expuser um alvo confiável, a faixa será curta, próxima ao clique; use Marca-texto no editor para ajustar. Teste links em diferentes programas e escalas de tela, pois o suporte varia.
+
+A imagem recente anterior ao clique é preservada para evitar destacar uma posição na página aberta depois. Os círculos automáticos editáveis antigos são convertidos ao abrir o procedimento; círculos desenhados manualmente são preservados. Marcas já gravadas nos pixels de imagens antigas não podem ser removidas automaticamente. Áudio, vídeo e originais permanecem intactos.
 
 - PDF: abre impressão do navegador. Escolha Salvar como PDF. É estático.
 - Word: gera um arquivo .docx com texto e imagens anotadas. É estático.

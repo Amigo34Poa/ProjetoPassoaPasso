@@ -54,7 +54,7 @@ async function addDirectory(folder,base='Playbook Studio',relative=''){
 await addDirectory(target);
 const output=path.join(root,'release',`Playbook-Studio-${appVersion}-Windows-x64.zip`);
 const { createWriteStream }=await import('node:fs');
-await new Promise((resolve,reject)=>zip.generateNodeStream({streamFiles:true,compression:'DEFLATE',compressionOptions:{level:6}}).pipe(createWriteStream(output)).on('finish',resolve).on('error',reject));
+await new Promise((resolve,reject)=>zip.generateNodeStream({streamFiles:true,compression:'DEFLATE',compressionOptions:{level:9}}).pipe(createWriteStream(output)).on('finish',resolve).on('error',reject));
 const checksum=createHash('sha256').update(await readFile(output)).digest('hex');
 await writeFile(output+'.sha256',`${checksum}  ${path.basename(output)}\n`);
 console.log('Pacote portátil gerado:',output);

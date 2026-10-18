@@ -2,6 +2,7 @@ import { api, blobDataURL, dataURLBlob, socket } from './api';
 import { finalizeRecording, saveAsset, saveBook } from './db';
 import { attachTranscripts, pcm16Wav } from './timeline';
 import { fillLocalDrafts } from './local-assistant';
+import { clickHighlight, type TargetBounds } from './highlights';
 import { id, type Config, type Playbook, type Step } from './types';
 
 type Callbacks = { update:(book:Playbook)=>void; state:(state:{seconds:number;paused:boolean;level:number;transcript:string})=>void; error:(message:string)=>void; stopped:(book:Playbook)=>void; hotkey:(action:string)=>void };
@@ -120,7 +121,7 @@ export class StudioRecorder {
       this.imageDrawing=true;
       const image=new Image();image.onload=()=>{if(this.active&&!this.paused){this.ctx.drawImage(image,0,0,this.canvas.width,this.canvas.height);if(!this.book.steps.length)void this.mark('automatic');}this.imageDrawing=false;};image.onerror=()=>{this.imageDrawing=false;};image.src=event.image;
     }
-    if(event.type==='click' && this.elapsed-this.lastMark>0.9)void this.mark('click',{x:event.x,y:event.y,window:event.window,button:event.button==='right'?'right':'left'});
+    if(event.type==='click' && this.elapsed-this.lastMark>0.9)void this.mark('click',{x:event.x,y:event.y,target:event.target,image:event.image,window:event.window,button:event.button==='right'?'right':'left'});
     if(event.type==='transcript')this.addTranscript(event.text,'windows');
   }
   private checkChange(){
@@ -131,16 +132,16 @@ export class StudioRecorder {
     if(this.fingerprint&&this.elapsed-this.lastMark>6){let sum=0;for(let i=0;i<next.length;i+=4)sum+=Math.abs(next[i]-this.fingerprint[i])+Math.abs(next[i+1]-this.fingerprint[i+1])+Math.abs(next[i+2]-this.fingerprint[i+2]);if(sum/(32*18*3)>14)void this.mark('automatic');}
     if(!this.fingerprint||this.elapsed-this.lastMark<0.5)this.fingerprint=new Uint8ClampedArray(next);
   }
-  async mark(source:Step['source']='manual',click?:{x:number;y:number;window?:string;button?:'left'|'right'}){
+  async mark(source:Step['source']='manual',click?:{x:number;y:number;target?:TargetBounds;image?:string;window?:string;button?:'left'|'right'}){
     if(!this.active||this.paused||this.stopping||!this.canvas.width)return;
     const time=this.book.steps.length?this.elapsed:0;this.lastMark=time;
     const imageId=id();
     // Reserve order synchronously; asynchronous PNG encoding must not reorder clicks.
-    const step:Step={id:id(),title:click?.window?`Ação em ${click.window.slice(0,75)}`:`Etapa ${this.book.steps.length+1}`,transcript:'',instruction:'',time,endTime:time,imageId,annotations:click?[{id:id(),type:'circle',x:Math.max(0,click.x-.025),y:Math.max(0,click.y-.04),x2:Math.min(1,click.x+.025),y2:Math.min(1,click.y+.04),text:''}]:[],source,window:click?.window};
+    const step:Step={id:id(),title:click?.window?`Ação em ${click.window.slice(0,75)}`:`Etapa ${this.book.steps.length+1}`,transcript:'',instruction:'',time,endTime:time,imageId,annotations:click?[clickHighlight(click,this.canvas.width,this.canvas.height)]:[],source,window:click?.window};
     if(click)step.action={button:click.button||'left',x:click.x,y:click.y};
     this.book.steps.push(step);this.emit();this.pendingImages++;
     try{
-      const blob=await new Promise<Blob>((resolve,reject)=>this.canvas.toBlob(b=>b?resolve(b):reject(new Error('Captura vazia.')),'image/png'));
+      const blob=click?.image?.startsWith('data:image/png;base64,')?await dataURLBlob(click.image):await new Promise<Blob>((resolve,reject)=>this.canvas.toBlob(b=>b?resolve(b):reject(new Error('Captura vazia.')),'image/png'));
       this.queue=this.queue.then(()=>saveAsset({id:imageId,bookId:this.book.id,blob,kind:'image',createdAt:Date.now()}));
       this.persist();
     }catch{this.callbacks.error('Uma captura não pôde ser salva. Marque a etapa novamente.');}finally{this.pendingImages--;}
