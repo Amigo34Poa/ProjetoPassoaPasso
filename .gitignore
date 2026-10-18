@@ -1,0 +1,13 @@
+node_modules/
+dist/
+release/
+.cache/
+.env
+.env.*
+!.env.example
+playwright-report/
+test-results/
+*.log
+native/bin/
+native/obj/
+*.tsbuildinfo
